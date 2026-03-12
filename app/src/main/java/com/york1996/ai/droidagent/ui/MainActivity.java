@@ -1,6 +1,7 @@
 package com.york1996.ai.droidagent.ui;
 
 import android.content.Intent;
+import android.content.pm.PackageManager;
 import android.os.Bundle;
 import android.view.Menu;
 import android.view.MenuItem;
@@ -8,9 +9,12 @@ import android.view.View;
 import android.view.inputmethod.EditorInfo;
 import android.widget.Toast;
 
+import androidx.activity.result.ActivityResultLauncher;
+import androidx.activity.result.contract.ActivityResultContracts;
 import androidx.appcompat.app.AlertDialog;
 import androidx.appcompat.app.AppCompatActivity;
 import androidx.coordinatorlayout.widget.CoordinatorLayout;
+import androidx.core.content.ContextCompat;
 import androidx.core.view.ViewCompat;
 import androidx.core.view.WindowCompat;
 import androidx.core.view.WindowInsetsCompat;
@@ -28,6 +32,11 @@ public class MainActivity extends AppCompatActivity {
     private ActivityMainBinding binding;
     private AgentViewModel viewModel;
     private ChatAdapter adapter;
+
+    private final ActivityResultLauncher<String[]> locationPermLauncher =
+            registerForActivityResult(
+                    new ActivityResultContracts.RequestMultiplePermissions(),
+                    result -> { /* granted or not — LocationTool handles the check at runtime */ });
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
@@ -47,7 +56,8 @@ public class MainActivity extends AppCompatActivity {
         setupWindowInsets();
         observeViewModel();
 
-        // 若 API Key 未配置，引导去设置
+        requestLocationPermissionIfNeeded();
+
         if (viewModel.getConfig().getApiKey().isEmpty()) {
             showApiKeyHint();
         }
@@ -98,10 +108,11 @@ public class MainActivity extends AppCompatActivity {
             v.setLayoutParams(lp);
 
             // 3. inputContainer 尺寸稳定后更新 RecyclerView 底部 padding
-            //    确保最后一条消息不会被输入栏挡住
+            //    = 输入栏高度 + 键盘/导航栏高度 + 8dp，确保气泡始终可见
             v.post(() -> {
                 int inputBarHeight = v.getHeight();
-                binding.rvChat.setPadding(dp8, dp8, dp8, inputBarHeight + dp8);
+                binding.rvChat.setPadding(dp8, dp8, dp8, inputBarHeight + bottomInset + dp8);
+                scrollToBottom();
             });
 
             return insets;
@@ -179,6 +190,21 @@ public class MainActivity extends AppCompatActivity {
         binding.rvChat.post(() ->
                 binding.rvChat.smoothScrollToPosition(
                         Math.max(0, adapter.getItemCount() - 1)));
+    }
+
+    private void requestLocationPermissionIfNeeded() {
+        boolean fine = ContextCompat.checkSelfPermission(
+                this, android.Manifest.permission.ACCESS_FINE_LOCATION)
+                == PackageManager.PERMISSION_GRANTED;
+        boolean coarse = ContextCompat.checkSelfPermission(
+                this, android.Manifest.permission.ACCESS_COARSE_LOCATION)
+                == PackageManager.PERMISSION_GRANTED;
+        if (!fine && !coarse) {
+            locationPermLauncher.launch(new String[]{
+                    android.Manifest.permission.ACCESS_FINE_LOCATION,
+                    android.Manifest.permission.ACCESS_COARSE_LOCATION
+            });
+        }
     }
 
     private void showApiKeyHint() {

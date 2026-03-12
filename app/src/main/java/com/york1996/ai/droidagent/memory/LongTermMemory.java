@@ -121,12 +121,51 @@ public class LongTermMemory {
         dao.deleteAll();
     }
 
-    private static class ScoredMemory {
-        final MemoryEntity entity;
-        final double score;
+    /**
+     * 检索结果：记忆实体 + 相似度分数（供上层格式化展示用）
+     */
+    public static class ScoredMemory {
+        public final MemoryEntity entity;
+        public final double score;
+
         ScoredMemory(MemoryEntity entity, double score) {
             this.entity = entity;
             this.score = score;
         }
+    }
+
+    /**
+     * 检索并返回带相似度分数的结果列表（在后台线程调用）
+     */
+    public List<ScoredMemory> retrieveWithScores(String query, int topK, double threshold) {
+        List<MemoryEntity> all = dao.getAll();
+        if (all.isEmpty()) return Collections.emptyList();
+
+        float[] queryVec = llmClient.embed(query);
+        if (queryVec == null) {
+            queryVec = VectorUtils.keywordVector(query, KEYWORD_VEC_DIM);
+        }
+
+        final float[] finalQueryVec = queryVec;
+        List<ScoredMemory> scored = new ArrayList<>();
+        for (MemoryEntity entity : all) {
+            if (entity.embedding == null || entity.embedding.isEmpty()) continue;
+            float[] entityVec = VectorUtils.deserialize(entity.embedding);
+            if (entityVec == null) continue;
+            double similarity = VectorUtils.cosineSimilarity(finalQueryVec, entityVec);
+            if (similarity >= threshold) {
+                scored.add(new ScoredMemory(entity, similarity));
+            }
+        }
+
+        Collections.sort(scored, (a, b) -> Double.compare(b.score, a.score));
+
+        List<ScoredMemory> results = new ArrayList<>();
+        for (int i = 0; i < Math.min(topK, scored.size()); i++) {
+            ScoredMemory sm = scored.get(i);
+            dao.recordAccess(sm.entity.id, System.currentTimeMillis());
+            results.add(sm);
+        }
+        return results;
     }
 }

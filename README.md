@@ -68,6 +68,8 @@
 | `web_search` | 网络搜索，返回摘要与相关链接 | DuckDuckGo Instant Answer API（免费无 Key） |
 | `weather` | 查询城市当前天气及 3 天预报 | wttr.in（免费无 Key） |
 | `file_manager` | 读写、列举、删除 App 私有存储中的文本文件 | 无 |
+| `battery_info` | 查询电池电量、充电状态、健康度、温度、电压 | 无 |
+| `current_location` | 获取当前设备位置（经纬度 + 反向地理编码得到城市/区域） | 需要定位权限（运行时自动请求） |
 
 ---
 
@@ -157,10 +159,12 @@ git clone <repo-url>
 直接在输入框发送消息，Agent 会自动决策是否调用工具，并在聊天界面实时展示每一步的工具调用与结果。
 
 **示例问题**：
+- `今天天气怎么样？` → 自动调用 `current_location` 获取位置 → 再调用 `weather` 查询当地天气
 - `北京今天天气怎么样？` → 调用 `weather` 工具
 - `计算 sqrt(144) + 2^10` → 调用 `calculator` 工具
 - `搜索一下最新的 Android 开发趋势` → 调用 `web_search` 工具
 - `把刚才的天气信息保存到 weather.txt` → 调用 `file_manager` 工具
+- `手机还有多少电？` → 调用 `battery_info` 工具
 
 ---
 
@@ -273,6 +277,8 @@ private void rebuildAgent() {
     toolRegistry.register(new WebSearchTool());
     toolRegistry.register(new WeatherTool());
     toolRegistry.register(new FileReadWriteTool());
+    toolRegistry.register(new BatteryTool());
+    toolRegistry.register(new LocationTool());
     toolRegistry.register(new TranslateTool());  // ← 添加这一行
     // ...
 }
@@ -309,7 +315,8 @@ app/src/main/java/com/york1996/ai/droidagent/
 ├── agent/
 │   ├── AgentCallback.java
 │   ├── AgentConfig.java
-│   └── AgentCore.java
+│   ├── AgentCore.java
+│   └── SystemPromptBuilder.java
 ├── llm/
 │   ├── LLMClient.java
 │   └── model/
@@ -326,8 +333,10 @@ app/src/main/java/com/york1996/ai/droidagent/
 ├── rag/
 │   └── RagEngine.java
 ├── tool/
+│   ├── BatteryTool.java
 │   ├── CalculatorTool.java
 │   ├── FileReadWriteTool.java
+│   ├── LocationTool.java
 │   ├── Tool.java
 │   ├── ToolRegistry.java
 │   ├── ToolResult.java

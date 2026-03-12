@@ -16,8 +16,10 @@ import com.york1996.ai.droidagent.llm.LLMClient;
 import com.york1996.ai.droidagent.memory.LongTermMemory;
 import com.york1996.ai.droidagent.memory.ShortTermMemory;
 import com.york1996.ai.droidagent.rag.RagEngine;
+import com.york1996.ai.droidagent.tool.BatteryTool;
 import com.york1996.ai.droidagent.tool.CalculatorTool;
 import com.york1996.ai.droidagent.tool.FileReadWriteTool;
+import com.york1996.ai.droidagent.tool.LocationTool;
 import com.york1996.ai.droidagent.tool.ToolRegistry;
 import com.york1996.ai.droidagent.tool.WeatherTool;
 import com.york1996.ai.droidagent.tool.WebSearchTool;
@@ -79,6 +81,8 @@ public class AgentViewModel extends AndroidViewModel {
         toolRegistry.register(new WebSearchTool());
         toolRegistry.register(new WeatherTool());
         toolRegistry.register(new FileReadWriteTool());
+        toolRegistry.register(new BatteryTool());
+        toolRegistry.register(new LocationTool());
 
         ShortTermMemory shortTermMemory = new ShortTermMemory(config.getMaxHistory());
         LongTermMemory  longTermMemory  = new LongTermMemory(getApplication(), llmClient, config);

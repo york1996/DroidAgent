@@ -92,15 +92,12 @@ public class AgentCore {
         // 1. 用户输入加入短期记忆
         shortTermMemory.addUserMessage(userInput);
 
-        // 2. RAG 检索
-        String ragContext = ragEngine.retrieve(userInput,
-                config.getRagTopK(), config.getRagThreshold());
+        // 2. RAG 检索（返回带相似度分数的结果列表）
+        List<LongTermMemory.ScoredMemory> ragMemories = ragEngine.retrieve(
+                userInput, config.getRagTopK(), config.getRagThreshold());
 
-        // 3. 构建 System 消息（含 RAG 上下文）
-        String systemContent = config.getSystemPrompt();
-        if (ragContext != null && !ragContext.isEmpty()) {
-            systemContent += "\n\n" + ragContext;
-        }
+        // 3. 用 SystemPromptBuilder 构建结构化 System 消息
+        String systemContent = SystemPromptBuilder.build(config, ragMemories);
 
         // 4. 工具定义
         JsonArray toolDefs = toolRegistry.buildToolDefinitions();
