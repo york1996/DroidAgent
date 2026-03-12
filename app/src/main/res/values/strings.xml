@@ -1,0 +1,7 @@
+<resources>
+    <string name="app_name">DroidAgent</string>
+    <string name="settings">设置</string>
+    <string name="input_hint">输入消息，与 AI Agent 对话…</string>
+    <string name="send">发送</string>
+    <string name="clear">清空</string>
+</resources>

@@ -1,0 +1,21 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <!-- Material Design palette -->
+    <color name="purple_200">#FFBB86FC</color>
+    <color name="purple_500">#FF6200EE</color>
+    <color name="purple_700">#FF3700B3</color>
+    <color name="teal_200">#FF03DAC5</color>
+    <color name="teal_700">#FF018786</color>
+    <color name="black">#FF000000</color>
+    <color name="white">#FFFFFFFF</color>
+
+    <!-- DroidAgent UI -->
+    <color name="primary">#1976D2</color>        <!-- 蓝色主色 -->
+    <color name="primary_dark">#0D47A1</color>
+    <color name="accent">#7B1FA2</color>          <!-- 紫色强调 -->
+    <color name="surface">#FFFFFF</color>
+    <color name="chat_bg">#F5F5F5</color>         <!-- 聊天背景 -->
+    <color name="text_primary">#212121</color>
+    <color name="text_secondary">#757575</color>
+    <color name="divider">#E0E0E0</color>
+</resources>
