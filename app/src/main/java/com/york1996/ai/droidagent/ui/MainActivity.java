@@ -10,6 +10,10 @@ import android.widget.Toast;
 
 import androidx.appcompat.app.AlertDialog;
 import androidx.appcompat.app.AppCompatActivity;
+import androidx.coordinatorlayout.widget.CoordinatorLayout;
+import androidx.core.view.ViewCompat;
+import androidx.core.view.WindowCompat;
+import androidx.core.view.WindowInsetsCompat;
 import androidx.lifecycle.ViewModelProvider;
 import androidx.recyclerview.widget.LinearLayoutManager;
 
@@ -28,6 +32,9 @@ public class MainActivity extends AppCompatActivity {
     @Override
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
+        // 开启 edge-to-edge：内容延伸到状态栏和导航栏后面，insets 由下方统一处理
+        WindowCompat.setDecorFitsSystemWindows(getWindow(), false);
+
         binding = ActivityMainBinding.inflate(getLayoutInflater());
         setContentView(binding.getRoot());
         setSupportActionBar(binding.toolbar);
@@ -37,6 +44,7 @@ public class MainActivity extends AppCompatActivity {
 
         setupRecyclerView();
         setupInput();
+        setupWindowInsets();
         observeViewModel();
 
         // 若 API Key 未配置，引导去设置
@@ -60,6 +68,44 @@ public class MainActivity extends AppCompatActivity {
         layoutManager.setStackFromEnd(true);
         binding.rvChat.setLayoutManager(layoutManager);
         binding.rvChat.setAdapter(adapter);
+    }
+
+    /**
+     * 统一处理系统窗口 insets：
+     * - 状态栏高度 → AppBarLayout 顶部 padding（Toolbar 下移，避免被状态栏遮挡）
+     * - 导航栏 + IME 高度 → inputContainer 底部 margin（跟随键盘弹出/收起动画）
+     * - inputContainer 高度变化后同步更新 RecyclerView 底部 padding
+     */
+    private void setupWindowInsets() {
+        final int dp8 = Math.round(8 * getResources().getDisplayMetrics().density);
+
+        // 1. 状态栏 → AppBarLayout 顶部 padding
+        ViewCompat.setOnApplyWindowInsetsListener(binding.appBar, (v, insets) -> {
+            int statusBarHeight = insets.getInsets(WindowInsetsCompat.Type.statusBars()).top;
+            v.setPadding(0, statusBarHeight, 0, 0);
+            return insets;
+        });
+
+        // 2. 导航栏 / IME → inputContainer 底部 margin，令其始终悬浮于遮挡物上方
+        ViewCompat.setOnApplyWindowInsetsListener(binding.inputContainer, (v, insets) -> {
+            int navBottom = insets.getInsets(WindowInsetsCompat.Type.navigationBars()).bottom;
+            int imeBottom = insets.getInsets(WindowInsetsCompat.Type.ime()).bottom;
+            int bottomInset = Math.max(navBottom, imeBottom);
+
+            CoordinatorLayout.LayoutParams lp =
+                    (CoordinatorLayout.LayoutParams) v.getLayoutParams();
+            lp.bottomMargin = bottomInset;
+            v.setLayoutParams(lp);
+
+            // 3. inputContainer 尺寸稳定后更新 RecyclerView 底部 padding
+            //    确保最后一条消息不会被输入栏挡住
+            v.post(() -> {
+                int inputBarHeight = v.getHeight();
+                binding.rvChat.setPadding(dp8, dp8, dp8, inputBarHeight + dp8);
+            });
+
+            return insets;
+        });
     }
 
     private void setupInput() {

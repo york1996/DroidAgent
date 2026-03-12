@@ -7,6 +7,7 @@ import android.widget.Toast;
 
 import androidx.appcompat.app.AppCompatActivity;
 
+import com.york1996.ai.droidagent.R;
 import com.york1996.ai.droidagent.databinding.ActivitySettingsBinding;
 
 /**
