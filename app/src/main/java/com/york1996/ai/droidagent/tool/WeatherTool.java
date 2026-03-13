@@ -32,7 +32,10 @@ public class WeatherTool implements Tool {
     @Override
     public String getDescription() {
         return "Get current weather and forecast for a city. "
-                + "Returns temperature, humidity, wind speed and weather description.";
+                + "Returns temperature, humidity, wind speed and weather description. "
+                + "IMPORTANT: If the user does not explicitly mention a city name, "
+                + "you MUST call the 'current_location' tool first to get the current city, "
+                + "then use that city name here. Never guess or reuse a city from past conversations.";
     }
 
     @Override
