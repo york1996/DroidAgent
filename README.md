@@ -11,6 +11,7 @@
 - **短期记忆**：滑动窗口管理当前会话消息历史
 - **长期记忆**：Room 数据库持久化，向量余弦相似度检索
 - **RAG**：每轮对话前自动检索相关历史记忆，注入 System Prompt
+- **MCP 客户端**：支持 [Model Context Protocol](https://modelcontextprotocol.io)，通过 Streamable HTTP 传输连接远程 MCP Server，自动发现并注册工具
 - **云端模型**：接入任意 OpenAI 兼容接口（OpenAI、Azure、DeepSeek、本地 Ollama 等）
 
 ---
@@ -31,20 +32,25 @@
 │  ┌──────────┐  ┌───────────┐  ┌─────────────┐  │
 │  │LLMClient │  │ToolRegistry│  │ MemoryMgr   │  │
 │  │(OkHttp)  │  │           │  │             │  │
-│  └──────────┘  └───────────┘  └─────┬───────┘  │
-└────────────────────────────────────-│───────────┘
-                                      │
-              ┌───────────────────────┤
-              │                       │
-   ┌──────────▼──────┐    ┌──────────▼──────┐
-   │  ShortTermMemory │    │  LongTermMemory  │
-   │  (滑动窗口列表)   │    │  (Room + 向量)   │
-   └──────────────────┘    └────────┬────────┘
-                                    │
-                           ┌────────▼────────┐
-                           │   RagEngine      │
-                           │ (余弦相似度检索)  │
-                           └─────────────────┘
+│  └──────────┘  └─────┬─────┘  └─────┬───────┘  │
+└──────────────────────│──────────────│───────────┘
+                       │              │
+          ┌────────────┤       ┌──────┴───────────┐
+          │            │       │                   │
+  ┌───────▼──────┐  ┌──▼───┐  │   ┌──────────────▼──┐
+  │ 内置 Tools   │  │ MCP  │  │   │  LongTermMemory  │
+  │ (本地工具)   │  │Client│  │   │  (Room + 向量)   │
+  └──────────────┘  └──┬───┘  │   └────────┬────────┘
+                       │      │            │
+                ┌──────▼────┐ │   ┌────────▼────────┐
+                │ Remote MCP│ │   │   RagEngine      │
+                │  Servers  │ │   │ (余弦相似度检索)  │
+                └───────────┘ │   └─────────────────┘
+                              │
+                   ┌──────────▼──────┐
+                   │  ShortTermMemory │
+                   │  (滑动窗口列表)   │
+                   └──────────────────┘
 ```
 
 ### 包结构
@@ -54,6 +60,7 @@
 | `agent` | `AgentConfig`（配置）、`AgentCallback`（事件回调）、`AgentCore`（循环引擎） |
 | `llm` | `LLMClient`（HTTP 客户端）、消息/响应模型 |
 | `tool` | `Tool` 接口、`ToolRegistry`、内置工具实现 |
+| `tool.mcp` | MCP 客户端（`McpClient`）、远程工具包装（`McpTool`）、服务注册（`McpManager`） |
 | `memory` | 短期记忆、长期记忆、Room 数据库、向量工具 |
 | `rag` | `RagEngine`（检索 + Prompt 注入） |
 | `ui` | Activity、ViewModel、RecyclerView Adapter |
@@ -70,6 +77,60 @@
 | `file_manager` | 读写、列举、删除 App 私有存储中的文本文件 | 无 |
 | `battery_info` | 查询电池电量、充电状态、健康度、温度、电压 | 无 |
 | `current_location` | 获取当前设备位置（经纬度 + 反向地理编码得到城市/区域） | 需要定位权限（运行时自动请求） |
+
+---
+
+## MCP（Model Context Protocol）
+
+DroidAgent 内置了 MCP 客户端，可以连接任意兼容 [MCP 协议](https://modelcontextprotocol.io) 的远程服务，自动发现并接入其提供的工具——无需手动编写本地 Tool 实现。
+
+### 工作原理
+
+```
+App 启动 / 设置变更
+    │
+    └─► McpManager.registerServer(serverUrl, toolRegistry)
+            │
+            ├─ McpClient.initialize()     → JSON-RPC 握手
+            ├─ McpClient.listTools()      → 获取工具列表
+            └─ 对每个工具：
+                 registry.register(new McpTool(client, def))
+                 → 与内置工具共享同一个 ToolRegistry，Agent 无差别调用
+```
+
+- **传输方式**：Streamable HTTP（所有请求 POST 到同一 endpoint），兼容 SSE 响应
+- **协议版本**：`2024-11-05`
+- **会话管理**：自动维护服务端返回的 `Mcp-Session-Id`
+
+### 已集成的 MCP Server
+
+| Server | 提供的工具 | 配置方式 |
+|---|---|---|
+| [高德地图 MCP](https://lbs.amap.com/api/mcp-server/summary) | 地理编码、逆地理编码、天气查询、POI 搜索、周边搜索、路线规划（驾车/步行/骑行/公交）等 ~13 个工具 | 在设置中填入高德 Web Service Key |
+
+> 工具列表由 MCP Server 动态提供，App 启动时自动拉取注册，无需硬编码。
+
+### 接入其他 MCP Server
+
+在 `AgentViewModel.rebuildAgent()` 中添加注册调用即可：
+
+```java
+new Thread(() -> McpManager.registerServer(
+        "https://your-mcp-server.example.com/mcp", toolRegistry
+)).start();
+```
+
+`McpManager.registerServer()` 会自动完成握手、工具发现、注册全流程，注册后的远程工具与本地内置工具行为完全一致。
+
+### MCP 包结构
+
+```
+tool/mcp/
+├── McpClient.java    ← JSON-RPC 客户端，负责握手、工具发现与调用
+├── McpManager.java   ← 一行注册入口，串联初始化流程
+├── McpTool.java      ← 将远程 MCP 工具包装为 Tool 接口实现
+└── McpToolDef.java   ← 工具元数据（名称、描述、参数 Schema）
+```
 
 ---
 
@@ -151,6 +212,7 @@ git clone <repo-url>
 | Chat 模型 | 对话模型名称 | `gpt-4o-mini` |
 | Embedding 模型 | 向量化模型（可留空） | `text-embedding-ada-002` |
 | 流式输出 | 开启后回答逐字输出，关闭则等待完整回复 | 开关 |
+| 高德 Key | 高德 Web Service Key，填入后自动接入高德地图 MCP（留空不启用） | `xxxxxxxxxxxxxxxx` |
 
 > **兼容服务示例**：OpenAI、Azure OpenAI、DeepSeek、Moonshot、本地 Ollama（`http://localhost:11434`）等任意 OpenAI 规范接口均可接入。
 
@@ -165,6 +227,7 @@ git clone <repo-url>
 - `搜索一下最新的 Android 开发趋势` → 调用 `web_search` 工具
 - `把刚才的天气信息保存到 weather.txt` → 调用 `file_manager` 工具
 - `手机还有多少电？` → 调用 `battery_info` 工具
+- `帮我搜一下附近的咖啡店` → 调用高德 MCP 的 `maps_around_search` 工具（需配置高德 Key）
 
 ---
 
@@ -306,49 +369,6 @@ JSON Schema 的 `type` 字段支持以下类型，按实际参数选择：
 - 返回内容会原文传回 LLM，建议使用简洁的纯文本，避免过长（超过 4000 字符可截断）
 - `getName()` 返回的名称在所有已注册工具中必须唯一
 - `getDescription()` 建议用英文，LLM 对英文描述的理解更稳定
-
----
-## 项目结构
-
-```
-app/src/main/java/com/york1996/ai/droidagent/
-├── agent/
-│   ├── AgentCallback.java
-│   ├── AgentConfig.java
-│   ├── AgentCore.java
-│   └── SystemPromptBuilder.java
-├── llm/
-│   ├── LLMClient.java
-│   └── model/
-│       ├── LLMChatMessage.java
-│       ├── LLMResponse.java
-│       └── ToolCall.java
-├── memory/
-│   ├── LongTermMemory.java
-│   ├── MemoryDao.java
-│   ├── MemoryDatabase.java
-│   ├── MemoryEntity.java
-│   ├── ShortTermMemory.java
-│   └── VectorUtils.java
-├── rag/
-│   └── RagEngine.java
-├── tool/
-│   ├── BatteryTool.java
-│   ├── CalculatorTool.java
-│   ├── FileReadWriteTool.java
-│   ├── LocationTool.java
-│   ├── Tool.java
-│   ├── ToolRegistry.java
-│   ├── ToolResult.java
-│   ├── WeatherTool.java
-│   └── WebSearchTool.java
-└── ui/
-    ├── AgentViewModel.java
-    ├── ChatAdapter.java
-    ├── MainActivity.java
-    ├── SettingsActivity.java
-    └── UiMessage.java
-```
 
 ---
 
