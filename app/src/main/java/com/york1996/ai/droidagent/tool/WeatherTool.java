@@ -46,7 +46,7 @@ public class WeatherTool implements Tool {
         JsonObject props = new JsonObject();
         JsonObject city = new JsonObject();
         city.addProperty("type", "string");
-        city.addProperty("description", "City name in English or Chinese, e.g. \"Beijing\", \"London\"");
+        city.addProperty("description", "City name only, no suffix like 市/区/省. e.g. \"Beijing\", \"珠海\", \"London\"");
         props.add("city", city);
         schema.add("properties", props);
 

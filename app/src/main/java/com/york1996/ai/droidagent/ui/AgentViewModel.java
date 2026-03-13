@@ -23,6 +23,7 @@ import com.york1996.ai.droidagent.tool.LocationTool;
 import com.york1996.ai.droidagent.tool.ToolRegistry;
 import com.york1996.ai.droidagent.tool.WeatherTool;
 import com.york1996.ai.droidagent.tool.WebSearchTool;
+import com.york1996.ai.droidagent.tool.mcp.McpManager;
 
 /**
  * ViewModel：持有 AgentCore，通过 LiveData 与 UI 通信
@@ -40,6 +41,7 @@ public class AgentViewModel extends AndroidViewModel {
     public static final String KEY_CHAT_MODEL   = "chat_model";
     public static final String KEY_EMB_MODEL    = "embedding_model";
     public static final String KEY_STREAMING    = "streaming_enabled";
+    public static final String KEY_AMAP_KEY     = "amap_key";
 
     // ── 普通消息事件（用户气泡 / thinking / 工具卡片 / 非流式 assistant 消息）
     private final MutableLiveData<UiMessage> newMessage     = new MutableLiveData<>();
@@ -83,6 +85,14 @@ public class AgentViewModel extends AndroidViewModel {
         toolRegistry.register(new FileReadWriteTool());
         toolRegistry.register(new BatteryTool());
         toolRegistry.register(new LocationTool());
+
+        // 若配置了高德 Key，后台异步注册高德 MCP（注册完成前工具暂不可用）
+        String amapKey = config.getAmapKey();
+        if (amapKey != null && !amapKey.isEmpty()) {
+            new Thread(() -> McpManager.registerServer(
+                    "https://mcp.amap.com/mcp?key=" + amapKey, toolRegistry
+            )).start();
+        }
 
         ShortTermMemory shortTermMemory = new ShortTermMemory(config.getMaxHistory());
         LongTermMemory  longTermMemory  = new LongTermMemory(getApplication(), llmClient, config);
@@ -168,6 +178,7 @@ public class AgentViewModel extends AndroidViewModel {
         cfg.setChatModel(prefs.getString(KEY_CHAT_MODEL, "gpt-4o-mini"));
         cfg.setEmbeddingModel(prefs.getString(KEY_EMB_MODEL, "text-embedding-ada-002"));
         cfg.setStreamingEnabled(prefs.getBoolean(KEY_STREAMING, false));
+        cfg.setAmapKey(prefs.getString(KEY_AMAP_KEY, ""));
         return cfg;
     }
 

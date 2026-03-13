@@ -57,6 +57,7 @@ public class SettingsActivity extends AppCompatActivity {
         binding.etChatModel.setText(prefs.getString(AgentViewModel.KEY_CHAT_MODEL, "gpt-4o-mini"));
         binding.etEmbModel.setText(prefs.getString(AgentViewModel.KEY_EMB_MODEL, "text-embedding-ada-002"));
         binding.switchStreaming.setChecked(prefs.getBoolean(AgentViewModel.KEY_STREAMING, false));
+        binding.etAmapKey.setText(prefs.getString(AgentViewModel.KEY_AMAP_KEY, ""));
     }
 
     private void saveSettings() {
@@ -65,6 +66,7 @@ public class SettingsActivity extends AppCompatActivity {
         String chatModel = binding.etChatModel.getText().toString().trim();
         String embModel  = binding.etEmbModel.getText().toString().trim();
         boolean streaming = binding.switchStreaming.isChecked();
+        String amapKey   = binding.etAmapKey.getText().toString().trim();
 
         if (apiKey.isEmpty()) {
             binding.etApiKey.setError("API Key 不能为空");
@@ -81,6 +83,7 @@ public class SettingsActivity extends AppCompatActivity {
                 .putString(AgentViewModel.KEY_CHAT_MODEL, chatModel.isEmpty() ? "gpt-4o-mini" : chatModel)
                 .putString(AgentViewModel.KEY_EMB_MODEL, embModel.isEmpty() ? "text-embedding-ada-002" : embModel)
                 .putBoolean(AgentViewModel.KEY_STREAMING, streaming)
+                .putString(AgentViewModel.KEY_AMAP_KEY, amapKey)
                 .apply();
 
         Toast.makeText(this, "设置已保存", Toast.LENGTH_SHORT).show();

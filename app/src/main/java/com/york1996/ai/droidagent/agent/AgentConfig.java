@@ -19,6 +19,7 @@ public class AgentConfig {
     private int ragTopK = 3;            // RAG 检索返回的最大条目数
     private double ragThreshold = 0.5;  // RAG 相似度阈值
     private boolean streamingEnabled = false; // 是否启用流式输出
+    private String amapKey = "";             // 高德地图 MCP API Key
 
     // ---------- 系统提示词 ----------
     private String systemPrompt =
@@ -65,6 +66,9 @@ public class AgentConfig {
 
     public String getSystemPrompt() { return systemPrompt; }
     public void setSystemPrompt(String systemPrompt) { this.systemPrompt = systemPrompt; }
+
+    public String getAmapKey() { return amapKey; }
+    public void setAmapKey(String amapKey) { this.amapKey = amapKey; }
 
     /** 返回完整的 chat completions URL */
     public String getChatUrl() {

@@ -119,6 +119,36 @@
             android:padding="12dp"
             android:textSize="14sp" />
 
+        <!-- AMap Key -->
+        <TextView
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:layout_marginTop="16dp"
+            android:text="高德地图 API Key"
+            android:textColor="@color/text_primary"
+            android:textStyle="bold"
+            android:textSize="14sp" />
+
+        <TextView
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:layout_marginTop="2dp"
+            android:text="填入后自动接入高德地图 MCP（导航/POI/天气等），留空不启用"
+            android:textColor="@color/text_secondary"
+            android:textSize="12sp" />
+
+        <EditText
+            android:id="@+id/et_amap_key"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:layout_marginTop="4dp"
+            android:background="@drawable/bg_input"
+            android:hint="your_amap_web_service_key"
+            android:inputType="textPassword"
+            android:padding="12dp"
+            android:textSize="14sp"
+            android:fontFamily="monospace" />
+
         <!-- Streaming Switch -->
         <LinearLayout
             android:layout_width="match_parent"
@@ -199,7 +229,7 @@
                     android:layout_width="wrap_content"
                     android:layout_height="wrap_content"
                     android:layout_marginTop="4dp"
-                    android:text="• calculator — 数学计算\n• web_search — 网络搜索（DuckDuckGo）\n• weather — 天气查询（wttr.in）\n• file_manager — 文件读写"
+                    android:text="• calculator — 数学计算\n• web_search — 网络搜索（DuckDuckGo）\n• weather — 天气查询（wttr.in）\n• file_manager — 文件读写\n• battery / location — 电量与定位\n\n配置高德 Key 后额外解锁（via MCP）：\n• maps_geo / maps_regeocode — 地理编码\n• maps_weather — 高德天气\n• maps_text_search / maps_around_search — POI 搜索\n• maps_direction_* — 路线规划\n• 等共 13 个高德工具"
                     android:textSize="12sp"
                     android:textColor="#BF360C"
                     android:lineSpacingExtra="2dp" />
