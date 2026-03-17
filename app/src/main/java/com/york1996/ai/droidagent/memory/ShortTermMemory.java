@@ -45,6 +45,12 @@ public class ShortTermMemory {
         return history.size();
     }
 
+    /** 原子替换全部历史（供 ConversationSummarizer 使用）。*/
+    public synchronized void replaceHistory(List<LLMChatMessage> newHistory) {
+        history.clear();
+        history.addAll(newHistory);
+    }
+
     /**
      * 滑动窗口裁剪：保留最新的 maxMessages 条（非 system）消息
      * 为保持上下文一致性，总是成对删除 user+assistant

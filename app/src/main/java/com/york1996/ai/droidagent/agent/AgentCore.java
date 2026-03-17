@@ -11,8 +11,11 @@ import com.york1996.ai.droidagent.llm.model.LLMChatMessage;
 import com.york1996.ai.droidagent.llm.model.LLMResponse;
 import com.york1996.ai.droidagent.llm.model.ToolCall;
 import com.york1996.ai.droidagent.memory.LongTermMemory;
+import com.york1996.ai.droidagent.memory.ConversationSummarizer;
+import com.york1996.ai.droidagent.memory.MemoryConsolidator;
 import com.york1996.ai.droidagent.memory.ShortTermMemory;
 import com.york1996.ai.droidagent.rag.RagEngine;
+import com.york1996.ai.droidagent.tool.RememberTool;
 import com.york1996.ai.droidagent.tool.ToolRegistry;
 import com.york1996.ai.droidagent.tool.ToolResult;
 
@@ -41,6 +44,9 @@ public class AgentCore {
     private final ShortTermMemory shortTermMemory;
     private final LongTermMemory longTermMemory;
     private final RagEngine ragEngine;
+    private final RememberTool rememberTool;
+    private final MemoryConsolidator memoryConsolidator;
+    private final ConversationSummarizer conversationSummarizer;
 
     private final ExecutorService executor = Executors.newSingleThreadExecutor();
     private final Handler mainHandler = new Handler(Looper.getMainLooper());
@@ -52,13 +58,19 @@ public class AgentCore {
                      ToolRegistry toolRegistry,
                      ShortTermMemory shortTermMemory,
                      LongTermMemory longTermMemory,
-                     RagEngine ragEngine) {
+                     RagEngine ragEngine,
+                     RememberTool rememberTool,
+                     MemoryConsolidator memoryConsolidator,
+                     ConversationSummarizer conversationSummarizer) {
         this.config = config;
         this.llmClient = llmClient;
         this.toolRegistry = toolRegistry;
         this.shortTermMemory = shortTermMemory;
         this.longTermMemory = longTermMemory;
         this.ragEngine = ragEngine;
+        this.rememberTool = rememberTool;
+        this.memoryConsolidator = memoryConsolidator;
+        this.conversationSummarizer = conversationSummarizer;
     }
 
     public void setSessionId(String sessionId) {
@@ -89,6 +101,12 @@ public class AgentCore {
     // ───────────────────────── Agent Loop ─────────────────────────
 
     private void runAgentLoop(String userInput, Context context, AgentCallback callback) throws Exception {
+        // 同步当前 sessionId 到 RememberTool
+        rememberTool.setSessionId(sessionId);
+
+        // 0. 对话过长时先压缩历史（在加入新消息之前）
+        conversationSummarizer.summarizeIfNeeded(shortTermMemory);
+
         // 1. 用户输入加入短期记忆
         shortTermMemory.addUserMessage(userInput);
 
@@ -155,10 +173,8 @@ public class AgentCore {
                 // 加入短期记忆
                 shortTermMemory.addAssistantMessage(finalAnswer);
 
-                // 异步保存至长期记忆（不阻塞回调）
-                final String memContent = "User: " + userInput + "\nAssistant: " + finalAnswer;
-                final String sid = sessionId;
-                executor.execute(() -> longTermMemory.save(memContent, "", sid));
+                // 触发记忆合并（异步，不阻塞回调）
+                executor.execute(() -> memoryConsolidator.consolidateIfNeeded());
 
                 // 回调主线程
                 postOnMain(() -> callback.onComplete(finalAnswer));

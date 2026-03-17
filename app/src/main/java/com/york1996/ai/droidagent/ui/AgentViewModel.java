@@ -16,10 +16,13 @@ import com.york1996.ai.droidagent.llm.LLMClient;
 import com.york1996.ai.droidagent.memory.LongTermMemory;
 import com.york1996.ai.droidagent.memory.ShortTermMemory;
 import com.york1996.ai.droidagent.rag.RagEngine;
+import com.york1996.ai.droidagent.memory.ConversationSummarizer;
+import com.york1996.ai.droidagent.memory.MemoryConsolidator;
 import com.york1996.ai.droidagent.tool.BatteryTool;
 import com.york1996.ai.droidagent.tool.CalculatorTool;
 import com.york1996.ai.droidagent.tool.FileReadWriteTool;
 import com.york1996.ai.droidagent.tool.LocationTool;
+import com.york1996.ai.droidagent.tool.RememberTool;
 import com.york1996.ai.droidagent.tool.ToolRegistry;
 import com.york1996.ai.droidagent.tool.WeatherTool;
 import com.york1996.ai.droidagent.tool.WebSearchTool;
@@ -98,8 +101,14 @@ public class AgentViewModel extends AndroidViewModel {
         LongTermMemory  longTermMemory  = new LongTermMemory(getApplication(), llmClient, config);
         RagEngine       ragEngine       = new RagEngine(longTermMemory);
 
+        RememberTool rememberTool = new RememberTool(longTermMemory);
+        MemoryConsolidator memoryConsolidator = new MemoryConsolidator(longTermMemory, llmClient, config);
+        ConversationSummarizer conversationSummarizer = new ConversationSummarizer(llmClient);
+        toolRegistry.register(rememberTool);
+
         agentCore = new AgentCore(config, llmClient, toolRegistry,
-                shortTermMemory, longTermMemory, ragEngine);
+                shortTermMemory, longTermMemory, ragEngine,
+                rememberTool, memoryConsolidator, conversationSummarizer);
     }
 
     // ───────────────────────── Send Message ─────────────────────────

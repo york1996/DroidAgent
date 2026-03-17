@@ -70,6 +70,16 @@ public class SystemPromptBuilder {
         sb.append("- Reference past memories naturally if relevant; do not recite them verbatim.\n");
         sb.append("- Be concise: avoid repeating information already stated in the conversation.");
 
+        // ── 5. 记忆管理准则 ──────────────────────────────────────────
+        sb.append("\n\n## Memory Guidelines\n");
+        sb.append("You have access to the `remember_memory` tool. Usage rules:\n");
+        sb.append("- MUST USE when user says: \"帮我记一下\", \"记住\", \"remember\", \"keep in mind\"\n");
+        sb.append("- SHOULD USE when you detect a clear user preference, habit, or personal fact ");
+        sb.append("(category=\"trait\" or \"fact\")\n");
+        sb.append("- MUST NOT USE for: ordinary Q&A, search results, weather, calculations, ");
+        sb.append("or any transient factual lookup.\n");
+        sb.append("- Write `content` as a self-contained sentence about the user.");
+
         return sb.toString();
     }
 
